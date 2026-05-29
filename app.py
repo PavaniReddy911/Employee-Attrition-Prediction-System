@@ -1,211 +1,406 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
-
+import plotly.express as px
 from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
 st.set_page_config(
-    page_title="Employee Attrition Prediction",
+    page_title="HR Command Center",
     page_icon="🚀",
     layout="wide"
 )
 
-st.title("🚀 AI-Powered Employee Attrition Prediction System")
+# =====================================
+# CUSTOM CSS
+# =====================================
 
-uploaded_file = st.file_uploader(
-    "Upload IBM HR Attrition Dataset (.csv)",
-    type=["csv"]
+st.markdown("""
+<style>
+
+.stApp{
+background: linear-gradient(
+135deg,
+#020617,
+#0f172a,
+#1e293b
+);
+}
+
+.block-container{
+padding-top:2rem;
+}
+
+.title{
+font-size:50px;
+font-weight:700;
+color:white;
+text-align:center;
+}
+
+.card{
+background:rgba(255,255,255,0.08);
+padding:25px;
+border-radius:20px;
+backdrop-filter:blur(10px);
+border:1px solid rgba(255,255,255,0.2);
+text-align:center;
+}
+
+.metric{
+font-size:35px;
+font-weight:bold;
+color:#00E5FF;
+}
+
+.metric-title{
+font-size:18px;
+color:white;
+}
+
+.insight{
+background:#0f172a;
+padding:20px;
+border-radius:15px;
+border-left:5px solid cyan;
+color:white;
+}
+
+section[data-testid="stSidebar"]{
+background:#0f172a;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+# =====================================
+# HEADER
+# =====================================
+
+st.markdown(
+"""
+<div class='title'>
+🚀 HR COMMAND CENTER
+</div>
+""",
+unsafe_allow_html=True
 )
 
-if uploaded_file is not None:
+st.write("")
 
-    try:
+# =====================================
+# SIDEBAR
+# =====================================
 
-        df = pd.read_csv(uploaded_file)
+st.sidebar.title("Navigation")
 
-        st.subheader("Dataset Preview")
-        st.dataframe(df.head())
+page = st.sidebar.radio(
+"Select",
+[
+"Dashboard",
+"EDA",
+"Prediction",
+"Insights"
+]
+)
 
-        # =====================
-        # Attrition Rate
-        # =====================
+uploaded_file = st.sidebar.file_uploader(
+"Upload Dataset",
+type=["csv"]
+)
 
-        if "Attrition" in df.columns:
+if uploaded_file:
 
-            attrition_rate = (
-                (df["Attrition"] == "Yes").sum()
-                / len(df)
-            ) * 100
+    df = pd.read_csv(uploaded_file)
 
-            st.metric(
-                "Attrition Rate",
-                f"{attrition_rate:.2f}%"
+    # =============================
+    # PREPROCESSING
+    # =============================
+
+    df_ml = df.copy()
+
+    drop_cols = [
+        "EmployeeCount",
+        "EmployeeNumber",
+        "Over18",
+        "StandardHours"
+    ]
+
+    for col in drop_cols:
+        if col in df_ml.columns:
+            df_ml.drop(col, axis=1, inplace=True)
+
+    cat_cols = df_ml.select_dtypes(
+        include="object"
+    ).columns
+
+    for col in cat_cols:
+        le = LabelEncoder()
+        df_ml[col] = le.fit_transform(
+            df_ml[col].astype(str)
+        )
+
+    X = df_ml.drop("Attrition", axis=1)
+    y = df_ml["Attrition"]
+
+    scaler = StandardScaler()
+
+    X_scaled = scaler.fit_transform(X)
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X_scaled,
+        y,
+        test_size=0.2,
+        random_state=42
+    )
+
+    rf = RandomForestClassifier(
+        n_estimators=100,
+        random_state=42
+    )
+
+    rf.fit(X_train, y_train)
+
+    pred = rf.predict(X_test)
+
+    accuracy = accuracy_score(
+        y_test,
+        pred
+    )
+
+    # ===================================
+    # DASHBOARD
+    # ===================================
+
+    if page == "Dashboard":
+
+        total_emp = len(df)
+
+        attrition_rate = (
+            (df["Attrition"]=="Yes").sum()
+            / len(df)
+        )*100
+
+        avg_income = int(
+            df["MonthlyIncome"].mean()
+        )
+
+        avg_age = int(
+            df["Age"].mean()
+        )
+
+        c1,c2,c3,c4 = st.columns(4)
+
+        with c1:
+            st.markdown(
+            f"""
+            <div class='card'>
+            <div class='metric'>{total_emp}</div>
+            <div class='metric-title'>
+            Employees
+            </div>
+            </div>
+            """,
+            unsafe_allow_html=True
             )
 
-        # =====================
-        # Preprocessing
-        # =====================
-
-        df_ml = df.copy()
-
-        cols_to_drop = [
-            "EmployeeCount",
-            "EmployeeNumber",
-            "Over18",
-            "StandardHours"
-        ]
-
-        existing_cols = [
-            col for col in cols_to_drop
-            if col in df_ml.columns
-        ]
-
-        df_ml.drop(
-            columns=existing_cols,
-            inplace=True
-        )
-
-        # Encode all object columns
-        categorical_cols = df_ml.select_dtypes(
-            include=["object"]
-        ).columns
-
-        for col in categorical_cols:
-            encoder = LabelEncoder()
-            df_ml[col] = encoder.fit_transform(
-                df_ml[col].astype(str)
+        with c2:
+            st.markdown(
+            f"""
+            <div class='card'>
+            <div class='metric'>
+            {attrition_rate:.2f}%
+            </div>
+            <div class='metric-title'>
+            Attrition
+            </div>
+            </div>
+            """,
+            unsafe_allow_html=True
             )
 
-        # =====================
-        # Features & Target
-        # =====================
+        with c3:
+            st.markdown(
+            f"""
+            <div class='card'>
+            <div class='metric'>
+            ₹{avg_income}
+            </div>
+            <div class='metric-title'>
+            Avg Salary
+            </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+            )
 
-        X = df_ml.drop("Attrition", axis=1)
-        y = df_ml["Attrition"]
+        with c4:
+            st.markdown(
+            f"""
+            <div class='card'>
+            <div class='metric'>
+            {avg_age}
+            </div>
+            <div class='metric-title'>
+            Avg Age
+            </div>
+            </div>
+            """,
+            unsafe_allow_html=True
+            )
 
-        # Convert everything to numeric
-        X = X.apply(
-            pd.to_numeric,
-            errors="coerce"
-        )
+        st.write("")
 
-        X = X.fillna(0)
+        st.subheader("🤖 Model Accuracy")
 
-        # =====================
-        # Scaling
-        # =====================
-
-        scaler = StandardScaler()
-
-        X_scaled = scaler.fit_transform(X)
-
-        # =====================
-        # Train Test Split
-        # =====================
-
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_scaled,
-            y,
-            test_size=0.2,
-            random_state=42
-        )
-
-        # =====================
-        # Random Forest
-        # =====================
-
-        rf = RandomForestClassifier(
-            n_estimators=100,
-            random_state=42
-        )
-
-        rf.fit(X_train, y_train)
-
-        predictions = rf.predict(X_test)
-
-        accuracy = accuracy_score(
-            y_test,
-            predictions
-        )
-
-        st.subheader("Model Performance")
+        st.progress(int(accuracy*100))
 
         st.success(
-            f"Random Forest Accuracy: {accuracy:.4f}"
+            f"Accuracy : {accuracy*100:.2f}%"
         )
 
-        # =====================
-        # Feature Importance
-        # =====================
+    # ===================================
+    # EDA
+    # ===================================
 
-        importance_df = pd.DataFrame({
-            "Feature": X.columns,
-            "Importance": rf.feature_importances_
-        })
+    elif page == "EDA":
 
-        importance_df = importance_df.sort_values(
-            by="Importance",
-            ascending=False
+        st.subheader("Department Wise Attrition")
+
+        fig = px.histogram(
+            df,
+            x="Department",
+            color="Attrition",
+            barmode="group"
         )
 
-        st.subheader("Top 10 Important Features")
-
-        st.dataframe(
-            importance_df.head(10),
+        st.plotly_chart(
+            fig,
             use_container_width=True
         )
 
-        st.bar_chart(
-            importance_df.head(10)
-            .set_index("Feature")
+        st.subheader("Gender Wise Attrition")
+
+        fig2 = px.pie(
+            df,
+            names="Gender"
         )
 
-        # =====================
-        # Sample Prediction
-        # =====================
-
-        st.subheader("Employee Risk Prediction")
-
-        sample_employee = X.iloc[[0]]
-
-        sample_scaled = scaler.transform(
-            sample_employee
+        st.plotly_chart(
+            fig2,
+            use_container_width=True
         )
 
-        prediction = rf.predict(
-            sample_scaled
+        st.subheader("Monthly Income")
+
+        fig3 = px.box(
+            df,
+            x="Attrition",
+            y="MonthlyIncome"
+        )
+
+        st.plotly_chart(
+            fig3,
+            use_container_width=True
+        )
+
+    # ===================================
+    # PREDICTION
+    # ===================================
+
+    elif page == "Prediction":
+
+        st.subheader(
+            "Employee Attrition Prediction"
+        )
+
+        sample = X.iloc[[0]]
+
+        result = rf.predict(
+            scaler.transform(sample)
         )[0]
 
-        if prediction == 1:
+        risk = rf.predict_proba(
+            scaler.transform(sample)
+        )[0][1]
+
+        st.metric(
+            "Risk Score",
+            f"{risk*100:.2f}%"
+        )
+
+        st.progress(
+            int(risk*100)
+        )
+
+        if result == 1:
             st.error(
-                "High Attrition Risk"
+                "⚠ High Attrition Risk"
             )
         else:
             st.success(
-                "Low Attrition Risk"
+                "✅ Low Attrition Risk"
             )
 
-        st.subheader("Dataset Information")
+    # ===================================
+    # AI INSIGHTS
+    # ===================================
 
-        st.write(
-            f"Rows: {df.shape[0]}"
+    elif page == "Insights":
+
+        importance = pd.DataFrame(
+            {
+            "Feature":X.columns,
+            "Importance":
+            rf.feature_importances_
+            }
         )
 
-        st.write(
-            f"Columns: {df.shape[1]}"
+        importance = importance.sort_values(
+            "Importance",
+            ascending=False
         )
 
-    except Exception as e:
+        st.subheader(
+            "Top Drivers of Attrition"
+        )
 
-        st.error(
-            f"Error: {str(e)}"
+        fig = px.bar(
+            importance.head(10),
+            x="Importance",
+            y="Feature",
+            orientation="h"
+        )
+
+        st.plotly_chart(
+            fig,
+            use_container_width=True
+        )
+
+        st.markdown(
+        """
+        <div class='insight'>
+
+        🔥 Key Findings
+
+        • Overtime strongly influences attrition
+
+        • Low salary employees are vulnerable
+
+        • Sales department has higher turnover
+
+        • Employees with low satisfaction show higher risk
+
+        • HR should focus on retention programs
+
+        </div>
+        """,
+        unsafe_allow_html=True
         )
 
 else:
 
     st.info(
-        "Please upload the IBM HR Attrition CSV file."
+    "⬅ Upload IBM HR Dataset from Sidebar"
     )
