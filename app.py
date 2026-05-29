@@ -6,6 +6,115 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 
+st.markdown("""
+<style>
+
+/* Background */
+.stApp{
+background: linear-gradient(
+135deg,
+#020617,
+#0f172a,
+#1e293b
+);
+overflow:hidden;
+}
+
+/* AIRPLANE */
+
+.airplane{
+position:fixed;
+top:80px;
+left:-200px;
+font-size:60px;
+z-index:9999;
+animation:fly 18s linear infinite;
+}
+
+@keyframes fly{
+0%{
+left:-200px;
+transform:translateY(0px);
+}
+50%{
+transform:translateY(-40px);
+}
+100%{
+left:110%;
+transform:translateY(0px);
+}
+}
+
+/* EMPLOYEE RIGHT */
+
+.employee1{
+position:fixed;
+bottom:40px;
+left:-100px;
+font-size:50px;
+animation:walkright 15s linear infinite;
+}
+
+@keyframes walkright{
+0%{
+left:-100px;
+}
+100%{
+left:110%;
+}
+}
+
+/* EMPLOYEE LEFT */
+
+.employee2{
+position:fixed;
+bottom:120px;
+right:-100px;
+font-size:50px;
+animation:walkleft 18s linear infinite;
+}
+
+@keyframes walkleft{
+0%{
+right:-100px;
+}
+100%{
+right:110%;
+}
+}
+
+/* AI GLOW */
+
+.glow{
+font-size:80px;
+text-align:center;
+animation:pulse 2s infinite;
+}
+
+@keyframes pulse{
+0%{
+transform:scale(1);
+}
+50%{
+transform:scale(1.2);
+}
+100%{
+transform:scale(1);
+}
+}
+
+</style>
+
+<div class="airplane">✈️</div>
+
+<div class="employee1">👨‍💼</div>
+
+<div class="employee2">👩‍💼</div>
+
+<div class="glow">🤖</div>
+
+""", unsafe_allow_html=True)
+
 st.set_page_config(
     page_title="HR Command Center",
     page_icon="🚀",
